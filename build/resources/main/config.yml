@@ -1,2 +1,6 @@
-sticky-piston-strength: 3
-piston-strength: 3
+sticky-piston-push-strength: 3
+sticky-piston-pull-strength: 3
+piston-push-strength: 3
+sticky-blocks:
+  - HONEY_BLOCK
+  - SLIME_BLOCK

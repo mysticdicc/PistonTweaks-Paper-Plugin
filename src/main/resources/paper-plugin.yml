@@ -6,3 +6,15 @@ bootstrapper: dank.net.pistonTweaks.PistonTweaksBootstrap
 loader: dank.net.pistonTweaks.PistonTweaksLoader
 api-version: '26.1.2'
 load: POSTWORLD
+
+permissions:
+  pistontweaks.reload:
+    description: Allow reloading of the Piston Tweaks configuration.
+    default: false
+
+commands:
+  pistontweaks:
+    description: Reload Piston Tweaks configuration.
+    permission: pistontweaks.reload
+    usage: "/pistontweaks reload"
+    aliases: [ pt ]
