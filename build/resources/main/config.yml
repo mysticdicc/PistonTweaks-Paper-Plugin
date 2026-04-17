@@ -1,6 +1,9 @@
 sticky-piston-push-strength: 3
 sticky-piston-pull-strength: 3
 piston-push-strength: 3
+piston-pull-strength: 3
+all-pistons-are-sticky: false
+log-debug: false
 sticky-blocks:
   - HONEY_BLOCK
   - SLIME_BLOCK

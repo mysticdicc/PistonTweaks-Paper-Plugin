@@ -25,10 +25,13 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
     private int stickyPistonPullStrength = 3;
     private int stickyPistonPushStrength = 3;
     private int pistonPushStrength = 3;
+    private int pistonPullStrength = 3;
     private List<Material> stickyBlocks = List.of(
             Material.SLIME_BLOCK,
             Material.HONEY_BLOCK
     );
+    private boolean allPistonsAreSticky = false;
+    private boolean logDebug = false;
 
     List<BlockFace> faces = new ArrayList<>(List.of(
             BlockFace.UP,
@@ -57,14 +60,19 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
 
                 var player = commandSourceStack.getExecutor();
                 if (player == null) return;
-                player.sendMessage("Configuration reloaded.");
-                player.sendMessage("sticky-piston-push-strength: " + stickyPistonPushStrength);
-                player.sendMessage("sticky-piston-pull-strength: " + stickyPistonPullStrength);
-                player.sendMessage("piston-push-strength: " + pistonPushStrength);
-                player.sendMessage("sticky-blocks: ");
+                if (logDebug) {
+                    player.sendMessage("Configuration reloaded.");
+                    player.sendMessage("sticky-piston-push-strength: " + stickyPistonPushStrength);
+                    player.sendMessage("sticky-piston-pull-strength: " + stickyPistonPullStrength);
+                    player.sendMessage("piston-push-strength: " + pistonPushStrength);
+                    player.sendMessage("piston-pull-strength: " + pistonPullStrength);
+                    player.sendMessage("all-pistons-are-sticky: " + allPistonsAreSticky);
+                    player.sendMessage("log-debug: " + logDebug);
+                    player.sendMessage("sticky-blocks: ");
 
-                for (var material : stickyBlocks) {
-                    player.sendMessage(material.name());
+                    for (var material : stickyBlocks) {
+                        player.sendMessage(material.name());
+                    }
                 }
             }
         });
@@ -76,11 +84,15 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
 
         var direction = event.getDirection();
         var piston = event.getBlock();
-        var blocks = getRelevantPistonBlocksPush(piston, direction);
-        getLogger().info("[EXTEND] piston chunk=" + piston.getChunk().getChunkKey() + " facing=" + direction);
 
-        if (blocks == null) return;
-        getLogger().info("[EXTEND] push blocks=" + blocks.size());
+        var blocks = getRelevantPistonBlocksPush(piston, direction);
+        if (logDebug) getLogger().info("[EXTEND] piston chunk=" + piston.getChunk().getChunkKey() + " facing=" + direction);
+        if (blocks == null) {
+            setExtended(piston, event);
+            return;
+        }
+
+        if (logDebug) getLogger().info("[EXTEND] push blocks=" + blocks.size());
         if (piston.getType() == Material.STICKY_PISTON && blocks.size() > stickyPistonPushStrength) return;
         if (piston.getType() == Material.PISTON && blocks.size() > pistonPushStrength) return;
 
@@ -92,21 +104,25 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
                 from.setType(Material.AIR, false);
             }
 
-            Piston pistonData = (Piston) piston.getBlockData();
-            pistonData.setExtended(true);
-            piston.setBlockData(pistonData, false);
-
-            var headBlock = piston.getRelative(event.getDirection());
-            PistonHead pistonHead = (PistonHead) Bukkit.createBlockData(Material.PISTON_HEAD);
-            pistonHead.setFacing(event.getDirection());
-            pistonHead.setShort(false);
-            pistonHead.setType(
-              piston.getType() == Material.STICKY_PISTON
-                ? TechnicalPiston.Type.STICKY
-                : TechnicalPiston.Type.NORMAL
-            );
-            headBlock.setBlockData(pistonHead, false);
+            setExtended(piston, event);
         });
+    }
+
+    private void setExtended(Block piston, BlockPistonExtendEvent event) {
+        Piston pistonData = (Piston) piston.getBlockData();
+        pistonData.setExtended(true);
+        piston.setBlockData(pistonData, false);
+
+        var headBlock = piston.getRelative(event.getDirection());
+        PistonHead pistonHead = (PistonHead) Bukkit.createBlockData(Material.PISTON_HEAD);
+        pistonHead.setFacing(event.getDirection());
+        pistonHead.setShort(false);
+        pistonHead.setType(
+                piston.getType() == Material.STICKY_PISTON
+                        ? TechnicalPiston.Type.STICKY
+                        : TechnicalPiston.Type.NORMAL
+        );
+        headBlock.setBlockData(pistonHead, false);
     }
 
     private List<Block> getRelevantPistonBlocksPush(Block piston, BlockFace face) {
@@ -150,7 +166,9 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
     private boolean canStick(Block block) {
         List<Material> cantStick = List.of(
                 Material.STICKY_PISTON,
-                Material.PISTON
+                Material.PISTON,
+                Material.PISTON_HEAD,
+                Material.MOVING_PISTON
         );
 
         var type = block.getType();
@@ -165,7 +183,7 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
             return new ArrayList<>(result);
         }
 
-        getLogger().info("[STICKY] source=" + source.getType());
+        if (logDebug) getLogger().info("[STICKY] source=" + source.getType());
         if (canStick(source)) result.add(source);
 
         for (BlockFace face : faces) {
@@ -186,35 +204,58 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onPistonRetract(BlockPistonRetractEvent event) {
-        if (!event.isSticky()) return;
-        if(event.getBlocks().isEmpty()) return;
+        if (!event.isSticky() && !allPistonsAreSticky) return;
 
-        var piston = event.getBlock();
-        getLogger().info("[RETRACT] block=" + piston.getType());
+        BlockFace facing = event.getDirection();
+        if (event.isSticky()) {
+            if (!event.getBlocks().isEmpty()) {
+                facing = event.getDirection().getOppositeFace();
+            }
+            else {
+                return;
+            }
+        }
 
-        BlockFace facing = event.getDirection().getOppositeFace();
+        Block piston = event.getBlock();
+        if (logDebug) getLogger().info("[RETRACT] block=" + piston.getType());
+
         List<Block> blocks = getRelevantPistolBlocksPull(piston, facing);
-        getLogger().info("[RETRACT] pull blocks=" + blocks.size() + " facing=" + facing);
+        if (blocks == null) return;
+        if (logDebug) getLogger().info("[RETRACT] pull blocks=" + blocks.size() + " facing=" + facing);
 
-        if (blocks.size() > stickyPistonPullStrength) return;
+        int strength = 1;
+
+        if (piston.getType() == Material.STICKY_PISTON) {
+            strength = stickyPistonPullStrength;
+        }
+        else if (piston.getType() == Material.PISTON) {
+            strength = pistonPullStrength;
+        }
+
+        if (blocks.size() > strength) return;
         event.setCancelled(true);
 
+        BlockFace finalFacing = facing;
         Bukkit.getScheduler().runTask(this, () -> {
-            Material material = event.isSticky() ? Material.STICKY_PISTON : Material.PISTON;
-            Piston pistonData = (Piston) Bukkit.createBlockData(material);
-
-            pistonData.setExtended(false);
-            pistonData.setFacing(facing);
-            event.getBlock().setType(material, false);
-            event.getBlock().setBlockData(pistonData, false);
+            setRetracted(event, finalFacing);
 
             for (int i = 0; i < blocks.size(); i++) {
                 Block from = blocks.get(i);
-                Block to = from.getRelative(facing.getOppositeFace());
+                Block to = from.getRelative(finalFacing.getOppositeFace());
                 to.setBlockData(from.getBlockData(), false);
                 from.setType(Material.AIR, false);
             }
         });
+    }
+
+    private void setRetracted(BlockPistonRetractEvent event, BlockFace facing) {
+        Material material = event.isSticky() ? Material.STICKY_PISTON : Material.PISTON;
+        Piston pistonData = (Piston) Bukkit.createBlockData(material);
+
+        pistonData.setExtended(false);
+        pistonData.setFacing(facing);
+        event.getBlock().setType(material, false);
+        event.getBlock().setBlockData(pistonData, false);
     }
 
     private List<Block> getRelevantPistolBlocksPull(Block piston, BlockFace face) {
@@ -249,7 +290,7 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        getLogger().info("[PistonTweaks] Disabled");
+        getLogger().info("Disabled");
     }
 
     private void loadConfig() {
@@ -258,6 +299,9 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
         stickyPistonPullStrength = config.getInt("sticky-piston-pull-strength");
         stickyPistonPushStrength = config.getInt("sticky-piston-push-strength");
         pistonPushStrength = config.getInt("piston-push-strength");
+        pistonPullStrength = config.getInt("piston-pull-strength");
+        allPistonsAreSticky = config.getBoolean("all-pistons-are-sticky");
+        logDebug = config.getBoolean("log-debug");
 
         stickyBlocks = new ArrayList<>();
         var blocks = config.getStringList("sticky-blocks");
