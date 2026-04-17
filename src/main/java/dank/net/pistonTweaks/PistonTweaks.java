@@ -30,6 +30,37 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
             Material.SLIME_BLOCK,
             Material.HONEY_BLOCK
     );
+    private List<Material> unmoveableBlocks = List.of(
+            Material.STICKY_PISTON,
+            Material.PISTON,
+            Material.PISTON_HEAD,
+            Material.MOVING_PISTON,
+            Material.AIR,
+            Material.BEDROCK,
+            Material.FURNACE,
+            Material.OBSIDIAN,
+            Material.BARRIER,
+            Material.BEACON,
+            Material.COMMAND_BLOCK,
+            Material.CONDUIT,
+            Material.CRYING_OBSIDIAN,
+            Material.ENCHANTING_TABLE,
+            Material.END_GATEWAY,
+            Material.END_PORTAL,
+            Material.END_PORTAL_FRAME,
+            Material.ENDER_CHEST,
+            Material.GRINDSTONE,
+            Material.JUKEBOX,
+            Material.LIGHT,
+            Material.LODESTONE,
+            Material.SPAWNER,
+            Material.NETHER_PORTAL,
+            Material.REINFORCED_DEEPSLATE,
+            Material.RESPAWN_ANCHOR,
+            Material.SCULK_CATALYST,
+            Material.STRUCTURE_BLOCK,
+            Material.STRUCTURE_VOID
+    );
     private boolean allPistonsAreSticky = false;
     private boolean logDebug = false;
 
@@ -69,8 +100,12 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
                     player.sendMessage("all-pistons-are-sticky: " + allPistonsAreSticky);
                     player.sendMessage("log-debug: " + logDebug);
                     player.sendMessage("sticky-blocks: ");
-
                     for (var material : stickyBlocks) {
+                        player.sendMessage(material.name());
+                    }
+
+                    player.sendMessage("unmoveable-blocks: ");
+                    for (var material : unmoveableBlocks) {
                         player.sendMessage(material.name());
                     }
                 }
@@ -164,16 +199,9 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
     }
 
     private boolean canStick(Block block) {
-        List<Material> cantStick = List.of(
-                Material.STICKY_PISTON,
-                Material.PISTON,
-                Material.PISTON_HEAD,
-                Material.MOVING_PISTON
-        );
-
         var type = block.getType();
         if (type.isAir()) return false;
-        if (cantStick.contains(type)) return false;
+        if (unmoveableBlocks.contains(type)) return false;
 
         return true;
     }
@@ -312,7 +340,16 @@ public final class PistonTweaks extends JavaPlugin implements Listener {
                 .map(Material::valueOf)
                 .toList();
 
-        if (materials.isEmpty()) return;
-        stickyBlocks.addAll(materials);
+        if (!materials.isEmpty()) stickyBlocks.addAll(materials);
+
+        unmoveableBlocks = new ArrayList<>();
+        var cantMove = config.getStringList("unmoveable-blocks");
+
+        List<Material> cantMoveMaterials = cantMove.stream()
+                .map(String::toUpperCase)
+                .map(Material::valueOf)
+                .toList();
+
+        if (!cantMoveMaterials.isEmpty()) unmoveableBlocks.addAll(cantMoveMaterials);
     }
 }
