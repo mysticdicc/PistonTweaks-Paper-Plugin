@@ -11,6 +11,7 @@ Piston Tweaks is a Minecraft Paper 1.26.2 plugin that allows you to tweak the de
 | all-pistons-are-sticky | Whether normal pistons should be able to pull blocks like sticky pistons. | boolean |
 | log-debug | Whether debug logs should be sent to console (disabled by default for spam saving). | boolean |
 | sticky-blocks | List of blocks that should be treated as sticky (like slime blocks). | list<string> |
+| unmoveable-blocks | List of blocks that cannot be moved by pistons (if you remove pistons from this list movement will break). | list<string> |
 
 ## Permissions
 | Permission | Description |
