@@ -1,0 +1,8 @@
+name: piston-tweaks
+version: '1.0'
+
+main: dank.net.pistonTweaks.PistonTweaks
+bootstrapper: dank.net.pistonTweaks.PistonTweaksBootstrap
+loader: dank.net.pistonTweaks.PistonTweaksLoader
+api-version: '26.1.2'
+load: POSTWORLD
